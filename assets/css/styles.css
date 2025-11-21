@@ -1,0 +1,122 @@
+/* ====================================
+   PLANO DE AÇÃO - ESTILOS CUSTOMIZADOS
+   ==================================== */
+
+/* Responsividade para rotação horizontal em dispositivos móveis */
+@media screen and (max-width: 900px) and (orientation: landscape) {
+  /* Cards de KPI em linha única com rolagem horizontal */
+  #kpiCards {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    gap: 0.5rem !important;
+    padding-bottom: 0.5rem;
+  }
+  #kpiCards > div {
+    min-width: 160px !important;
+    max-width: 220px !important;
+    flex: 0 0 auto !important;
+    border-radius: 1rem !important;
+    margin: 0 !important;
+  }
+  html, body {
+    font-size: 0.95rem;
+    padding: 0;
+    margin: 0;
+    overflow-x: auto;
+  }
+  .max-w-7xl {
+    max-width: 100vw;
+    padding: 0.5rem !important;
+  }
+  header, section, .bg-white, .rounded-2xl, .shadow, .p-4 {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+  .grid, .grid-cols-2, .grid-cols-4, .grid-cols-6, .grid-cols-1, .lg\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+  /* Filtros em coluna, não em linha */
+  form[role="search"], .filtros-mobile-col {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+  }
+  /* Tabela com rolagem horizontal */
+  .tabela-responsive, table {
+    display: block;
+    width: 100vw !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  th, td {
+    white-space: nowrap;
+    font-size: 0.95em;
+    min-width: 110px;
+  }
+  #statusChart, #priorityChart {
+    min-width: 320px !important;
+    max-width: 100vw !important;
+    height: 220px !important;
+  }
+  .offcanvasRelatorios, #offcanvasRelatorios {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+}
+
+/* Paleta para gráficos Chart.js (usada via getComputedStyle) */
+:root {
+  --chart-bg: #fff;
+  --chart-fg: #0f172a;
+  --chart-emerald: #3ba97d;
+  --chart-sky: #2586b6;
+  --chart-amber: #bfa13b;
+  --chart-rose: #b85c6b;
+  --chart-slate: #6b7a8c;
+}
+
+/* Scrollbar customizada */
+* { 
+  scrollbar-width: thin; 
+  scrollbar-color: #CBD5E1 transparent; 
+}
+
+::-webkit-scrollbar { 
+  height: 8px; 
+  width: 8px; 
+}
+
+::-webkit-scrollbar-thumb { 
+  background: #cbd5e1; 
+  border-radius: 9999px; 
+}
+
+::-webkit-scrollbar-track { 
+  background: transparent; 
+}
+
+/* Dropzone para anexos */
+.dropzone {
+  border: 2px dashed #94a3b8; 
+  border-radius: 1rem; 
+  transition: all .15s ease;
+}
+
+.dropzone.dragover { 
+  border-color: #0ea5e9; 
+  background: #f0f9ff; 
+}
+
+/* Gráficos Chart.js */
+#statusChart, #priorityChart {
+  height: 280px !important;
+  max-height: 280px;
+  min-height: 140px;
+  width: 100% !important;
+  max-width: 100%;
+  display: block;
+  margin: 0 auto;
+}
