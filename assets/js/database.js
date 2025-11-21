@@ -432,6 +432,8 @@ export async function loadStatusOptions() {
 // ====== SALVAR ANEXOS ======
 export async function saveAttachments(taskId, attachments) {
   try {
+    console.log('💾 Salvando anexos para tarefa:', taskId);
+    
     // Deletar anexos antigos
     await supabaseClient
       .from('task_attachments')
@@ -440,20 +442,31 @@ export async function saveAttachments(taskId, attachments) {
     
     // Inserir novos anexos
     if (attachments && attachments.length > 0) {
-      const attachmentsData = attachments.map(att => ({
-        task_id: taskId,
-        file_name: att.name,
-        file_url: att.dataURL
-      }));
+      const attachmentsData = attachments
+        .filter(att => att.dataURL) // Filtrar apenas anexos com dataURL válido
+        .map(att => ({
+          task_id: taskId,
+          file_name: att.name || 'anexo.jpg',
+          file_url: att.dataURL
+        }));
       
-      const { error } = await supabaseClient
-        .from('task_attachments')
-        .insert(attachmentsData);
-      
-      if (error) throw error;
+      if (attachmentsData.length > 0) {
+        console.log(`📎 Inserindo ${attachmentsData.length} anexos...`);
+        
+        const { error } = await supabaseClient
+          .from('task_attachments')
+          .insert(attachmentsData);
+        
+        if (error) {
+          console.error('❌ Erro ao inserir anexos:', error);
+          throw error;
+        }
+        
+        console.log('✅ Anexos salvos com sucesso');
+      } else {
+        console.log('⚠️ Nenhum anexo válido para salvar');
+      }
     }
-    
-    console.log('✅ Anexos salvos');
     
   } catch (error) {
     console.error('❌ Erro ao salvar anexos:', error);
@@ -489,25 +502,34 @@ async function migrateExistingTasks() {
 }
 
 // ====== GERAR ID SEQUENCIAL ======
+// Função para gerar ID sequencial no formato ID001, ID002, etc.
 async function generateSequentialId() {
   try {
     const { data, error } = await supabaseClient
       .from('tasks')
       .select('sequential_id')
-      .order('sequential_id', { ascending: false })
-      .limit(1)
-      .single();
+      .order('sequential_id', { ascending: false });
     
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       console.error('Erro ao buscar último ID:', error);
-      return 1;
+      return 'ID001';
     }
     
-    return (data?.sequential_id || 0) + 1;
+    // Encontrar o maior número de ID
+    const maxId = (data || []).reduce((max, task) => {
+      if (task.sequential_id) {
+        const num = parseInt(task.sequential_id.replace('ID', ''));
+        return Math.max(max, isNaN(num) ? 0 : num);
+      }
+      return max;
+    }, 0);
+    
+    // Retornar próximo ID no formato ID001, ID002, etc.
+    return `ID${String(maxId + 1).padStart(3, '0')}`;
     
   } catch (error) {
     console.error('Erro ao gerar ID sequencial:', error);
-    return Math.floor(Math.random() * 10000);
+    return 'ID001';
   }
 }
 

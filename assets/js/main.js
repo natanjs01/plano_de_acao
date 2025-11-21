@@ -2,9 +2,9 @@
 // ORQUESTRADOR PRINCIPAL
 // ====================================
 
-import { initializeSupabase } from './config.js';
+import { initializeSupabase, APP_STATE } from './config.js';
 import { checkAuthStatus, sendVerificationCode, verifyCode, backToEmailForm, logout, getTempEmail } from './auth.js';
-import { loadTasks } from './database.js';
+import { loadTasks, createTask, updateTask, saveAttachments } from './database.js';
 import { initCharts, updateKPIs } from './charts.js';
 import { refreshViews, renderTaskList, renderKanban, openTaskModal } from './ui.js';
 import { exportJSON, importJSON, exportDashboardPDF, exportListPDF } from './reports.js';
@@ -81,6 +81,15 @@ function setupEventListeners() {
       document.getElementById('viewList').classList.add('hidden');
       document.getElementById('viewKanban').classList.remove('hidden');
       renderKanban();
+    });
+  }
+  
+  // ========== FORMULÁRIO DE TAREFAS ==========
+  const taskForm = document.getElementById('taskForm');
+  if (taskForm) {
+    taskForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      await handleTaskFormSubmit(e.target);
     });
   }
   
@@ -198,6 +207,9 @@ function setupEventListeners() {
       openImageInNewTab();
     });
   }
+  
+  // ========== DRAG AND DROP DE ANEXOS ==========
+  setupAttachmentHandlers();
   
   // ========== MODAL DE SOLICITAÇÃO DE CONCLUSÃO ==========
   const btnCloseConfirmationModal = document.getElementById('btnCloseConfirmationModal');
@@ -1317,6 +1329,228 @@ if (btnConfirmApproval) {
     } catch (error) {
       alert('Erro ao processar decisão: ' + error.message);
     }
+  });
+}
+
+// ====== PROCESSAR FORMULÁRIO DE TAREFAS ======
+async function handleTaskFormSubmit(form) {
+  try {
+    console.log('📝 Processando formulário de tarefa...');
+    
+    const formData = new FormData(form);
+    const taskId = form.dataset.taskId;
+    
+    // Validar título
+    const title = formData.get('title');
+    if (!title || !title.trim()) {
+      alert('O título é obrigatório!');
+      return;
+    }
+    
+    const taskData = {
+      title: title.trim(),
+      assignee: formData.get('assignee') || null,
+      due_date: formData.get('due') || null,
+      priority: formData.get('priority') || 'Média',
+      status: formData.get('status') || 'Backlog',
+      description: formData.get('description') || '',
+      tags: formData.get('tags') ? formData.get('tags').split(',').map(t => t.trim()).filter(t => t) : [],
+      setor_id: formData.get('setor') || null
+    };
+    
+    console.log('📋 Dados da tarefa:', taskData);
+    
+    let savedTaskId;
+    
+    if (taskId) {
+      // Atualizar tarefa existente
+      console.log('✏️ Atualizando tarefa:', taskId);
+      await updateTask(taskId, taskData);
+      savedTaskId = taskId;
+    } else {
+      // Criar nova tarefa
+      console.log('➕ Criando nova tarefa...');
+      const newTask = await createTask(taskData);
+      savedTaskId = newTask.id;
+      console.log('✅ Tarefa criada com ID:', savedTaskId);
+    }
+    
+    // Salvar anexos se houver
+    const files = window.getSelectedFiles ? await window.getSelectedFiles() : [];
+    if (files.length > 0 && savedTaskId) {
+      console.log('📎 Salvando anexos:', files.length);
+      await saveAttachments(savedTaskId, files);
+    }
+    
+    // Limpar formulário e arquivos
+    form.reset();
+    delete form.dataset.taskId;
+    if (window.clearSelectedFiles) {
+      window.clearSelectedFiles();
+    }
+    
+    // Fechar modal
+    const modal = document.getElementById('taskModal');
+    if (modal) modal.close();
+    
+    // Recarregar tarefas
+    console.log('🔄 Recarregando tarefas...');
+    await loadTasks();
+    
+    console.log('✅ Tarefa salva com sucesso!');
+    
+  } catch (error) {
+    console.error('❌ Erro ao salvar tarefa:', error);
+    alert('Erro ao salvar tarefa: ' + error.message);
+  }
+}
+
+// ====== DRAG AND DROP DE ANEXOS ======
+let selectedFiles = [];
+
+function setupAttachmentHandlers() {
+  const dropArea = document.getElementById('dropArea');
+  const imageInput = document.getElementById('imageInput');
+  const thumbs = document.getElementById('thumbs');
+  const btnClearAnexos = document.getElementById('btnClearAnexos');
+  
+  if (!dropArea || !imageInput) return;
+  
+  // Prevenir comportamento padrão do navegador
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropArea.addEventListener(eventName, preventDefaults, false);
+    document.body.addEventListener(eventName, preventDefaults, false);
+  });
+  
+  // Destacar área de drop ao arrastar
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropArea.addEventListener(eventName, highlight, false);
+  });
+  
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropArea.addEventListener(eventName, unhighlight, false);
+  });
+  
+  // Lidar com drop de arquivos
+  dropArea.addEventListener('drop', handleDrop, false);
+  
+  // Lidar com seleção de arquivos
+  imageInput.addEventListener('change', function(e) {
+    handleFiles(e.target.files);
+  });
+  
+  // Limpar anexos
+  if (btnClearAnexos) {
+    btnClearAnexos.addEventListener('click', function() {
+      selectedFiles = [];
+      if (thumbs) thumbs.innerHTML = '';
+    });
+  }
+}
+
+function preventDefaults(e) {
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function highlight(e) {
+  const dropArea = document.getElementById('dropArea');
+  if (dropArea) {
+    dropArea.classList.add('border-sky-500', 'bg-sky-50');
+  }
+}
+
+function unhighlight(e) {
+  const dropArea = document.getElementById('dropArea');
+  if (dropArea) {
+    dropArea.classList.remove('border-sky-500', 'bg-sky-50');
+  }
+}
+
+function handleDrop(e) {
+  const dt = e.dataTransfer;
+  const files = dt.files;
+  handleFiles(files);
+}
+
+function handleFiles(files) {
+  const thumbs = document.getElementById('thumbs');
+  if (!thumbs) return;
+  
+  // Converter FileList para Array e filtrar apenas imagens
+  const imageFiles = [...files].filter(file => file.type.startsWith('image/'));
+  
+  if (imageFiles.length === 0) {
+    alert('Por favor, selecione apenas arquivos de imagem.');
+    return;
+  }
+  
+  // Adicionar aos arquivos selecionados
+  selectedFiles = [...selectedFiles, ...imageFiles];
+  
+  // Renderizar thumbnails
+  thumbs.innerHTML = '';
+  selectedFiles.forEach((file, index) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const div = document.createElement('div');
+      div.className = 'relative group';
+      div.innerHTML = `
+        <img src="${e.target.result}" class="w-20 h-20 object-cover rounded-lg" alt="Preview">
+        <button type="button" data-index="${index}" class="remove-thumb absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+          ×
+        </button>
+      `;
+      thumbs.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+  
+  // Adicionar event listener para remover thumbnails
+  setTimeout(() => {
+    document.querySelectorAll('.remove-thumb').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const index = parseInt(this.dataset.index);
+        selectedFiles.splice(index, 1);
+        handleFiles([]); // Re-renderizar
+      });
+    });
+  }, 100);
+}
+
+// Expor para uso no formulário de tarefas
+window.getSelectedFiles = async () => {
+  // Converter arquivos File para objetos com dataURL
+  const convertedFiles = [];
+  
+  for (const file of selectedFiles) {
+    try {
+      const dataURL = await readFileAsDataURL(file);
+      convertedFiles.push({
+        name: file.name,
+        dataURL: dataURL
+      });
+    } catch (error) {
+      console.error('Erro ao converter arquivo:', file.name, error);
+    }
+  }
+  
+  return convertedFiles;
+};
+
+window.clearSelectedFiles = () => {
+  selectedFiles = [];
+  const thumbs = document.getElementById('thumbs');
+  if (thumbs) thumbs.innerHTML = '';
+};
+
+// Função auxiliar para ler arquivo como Data URL
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = (e) => reject(e);
+    reader.readAsDataURL(file);
   });
 }
 
