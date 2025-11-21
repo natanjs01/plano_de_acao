@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Controle de Atividades — Dashboard & Anexos</title>
+  
+  <!-- Favicon (evita erro 404) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+  
+  <!-- CDNs Externos -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Estilos Customizados -->
+  <link rel="stylesheet" href="./assets/css/styles.css">
+  
+  <!-- Registrar Chart.js DataLabels -->
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      if (window.Chart && window.ChartDataLabels) {
+        Chart.register(window.ChartDataLabels);
+      }
+    });
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800" style="font-family: 'Inter', sans-serif;">
+  
+  <!-- TELA DE LOGIN -->
+  <div id="loginScreen" class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-blue-600">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 12h8M12 8v8"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Plano de Ação</h1>
+        <p class="text-gray-600">Sistema de Controle de Atividades</p>
+      </div>
+
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label for="emailInput" class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <input type="email" id="emailInput" required 
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 placeholder="seu@email.com">
+        </div>
+        <button type="submit" class="w-full bg-blue-600 text-white rounded-lg px-4 py-3 hover:bg-blue-700 transition-colors duration-200 font-medium">
+          📧 Enviar Código de Verificação
+        </button>
+      </form>
+
+      <form id="codeForm" class="space-y-4 hidden">
+        <div class="text-center mb-4">
+          <p class="text-sm text-gray-600">
+            📧 Código enviado para <strong id="sentToEmail"></strong>
+          </p>
+        </div>
+        <div>
+          <label for="codeInput" class="block text-sm font-medium text-gray-700 mb-2">
+            Código de Verificação 
+            <span class="text-xs text-gray-500">(6 dígitos recebidos por email)</span>
+          </label>
+          <input type="text" id="codeInput" maxlength="8" 
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-xl font-mono tracking-widest"
+                 placeholder="123456">
+        </div>
+        <button type="submit" class="w-full bg-green-600 text-white rounded-lg px-4 py-3 hover:bg-green-700 transition-colors duration-200 font-medium">
+          Verificar Código
+        </button>
+        <button type="button" id="backToEmail" class="w-full bg-gray-500 text-white rounded-lg px-4 py-2 hover:bg-gray-600 transition-colors duration-200 text-sm">
+          ← Voltar ao Email
+        </button>
+      </form>
+
+      <div id="loginLoading" class="hidden w-full bg-blue-600 rounded-lg px-4 py-3 flex items-center justify-center gap-3 text-white">
+        <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+        </svg>
+        <span>Conectando...</span>
+      </div>
+
+      <div class="mt-8 text-center">
+        <p class="text-sm text-gray-500">Acesso restrito a usuários autorizados</p>
+        <div class="mt-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+          <p class="text-xs text-blue-700">
+            <strong>🔐 Acesso Seguro</strong><br>
+            Enviaremos um código de 6 dígitos<br>
+            para seu email. Sem links, apenas código!
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APLICAÇÃO PRINCIPAL (inicialmente oculta) -->
+  <div id="appContent" class="hidden max-w-7xl mx-auto p-4 md:p-6" role="main">
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center justify-center rounded-full bg-sky-100 p-2">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-sky-600">
+            <circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/>
+          </svg>
+        </span>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold tracking-tight">Controle de Atividades</h1>
+          <p class="text-slate-600 text-sm">Gerencie suas tarefas com eficiência</p>
+          <div id="userInfo" class="flex items-center gap-2 mt-2">
+            <span class="text-xs text-slate-500">👤</span>
+            <span id="userName" class="text-xs text-slate-600 font-medium"></span>
+            <span class="text-xs text-slate-400">•</span>
+            <span id="userSetor" class="text-xs px-2 py-1 rounded-full"></span>
+          </div>
+          <div id="setorFilter" class="mt-3 hidden">
+            <label for="setorSelect" class="block text-xs font-medium text-gray-700 mb-1">🔍 Filtrar por Setor:</label>
+            <select id="setorSelect" class="text-xs px-2 py-1 border border-gray-300 rounded-md bg-white">
+              <option value="">🌐 Todos os Setores</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <nav class="flex flex-wrap items-center gap-2 mt-3 md:mt-0">
+        <button id="btnNew" class="hidden group flex items-center gap-2 px-3 py-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700 transition">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          <span class="hidden sm:inline">Nova</span>
+        </button>
+        <button id="btnExport" class="hidden group flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+          <span class="hidden sm:inline">Exportar</span>
+        </button>
+        <label id="btnImport" class="hidden group flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-600 text-white hover:bg-amber-700 cursor-pointer transition">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7 7 7-7"/></svg>
+          <span class="hidden sm:inline">Importar</span>
+          <input type="file" id="inputImport" accept="application/json" class="hidden" />
+        </label>
+        <button id="btnRelatorios" class="group flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          <span class="hidden sm:inline">Relatórios</span>
+        </button>
+        <div id="offcanvasRelatorios" class="fixed top-0 right-0 h-full w-80 max-w-full bg-white shadow-2xl border-l border-slate-200 z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col" style="display:none;">
+          <div class="flex items-center justify-between px-6 py-4 border-b">
+            <h3 class="text-lg font-semibold">Relatórios</h3>
+            <button id="btnCloseRelatorios" class="text-slate-500 hover:text-slate-900 text-2xl font-bold">&times;</button>
+          </div>
+          <div class="flex-1 p-6 flex flex-col gap-4">
+            <button id="btnExportPDF" class="flex items-center gap-2 px-4 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition w-full">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+              PDF Dashboard
+            </button>
+            <button id="btnExportListPDF" class="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition w-full">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+              Lista PDF
+            </button>
+          </div>
+        </div>
+        <button id="btnManageStatus" class="hidden group flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          <span class="hidden sm:inline">Status</span>
+        </button>
+        <button id="btnAdmin" class="hidden group flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"/></svg>
+          <span class="hidden sm:inline">Admin</span>
+        </button>
+        <button id="btnPendingApprovals" class="hidden relative group flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-600 text-white hover:bg-orange-700 transition">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span class="hidden sm:inline">Pendências</span>
+          <span id="pendingBadge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full min-w-[20px] h-5 flex items-center justify-center hidden">0</span>
+        </button>
+        <button id="btnLogout" class="group flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-600 text-white hover:bg-gray-700 transition">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14l5-5-5-5m5 5H9"/></svg>
+          <span class="hidden sm:inline">Sair</span>
+        </button>
+        <button id="btnReset" class="hidden group flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6"/></svg>
+          <span class="hidden sm:inline">Reset</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- KPIs -->
+    <section class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6" id="kpiCards"></section>
+
+    <!-- Charts -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div class="bg-white rounded-2xl shadow p-4">
+        <h2 class="font-semibold mb-2">Status das Atividades</h2>
+        <canvas id="statusChart" height="140"></canvas>
+      </div>
+      <div class="bg-white rounded-2xl shadow p-4">
+        <h2 class="font-semibold mb-2">Prioridade</h2>
+        <canvas id="priorityChart" height="140"></canvas>
+      </div>
+    </section>
+
+    <!-- Filtros -->
+    <section class="bg-white rounded-2xl shadow p-4 mb-4">
+      <form class="flex flex-col md:flex-row md:items-end gap-3" role="search" onsubmit="return false;">
+        <div class="flex-1 min-w-[180px]">
+          <label class="block text-sm font-medium mb-1" for="search">Busca</label>
+          <div class="flex gap-2 items-center">
+            <input id="search" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400 transition" placeholder="ID, título, responsável, tags..." autocomplete="off" />
+            <label class="flex gap-1 items-center text-xs text-slate-600"><input type="checkbox" id="searchTagsOnly" class="accent-sky-600" /> Tags</label>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="filterStatus">Status</label>
+          <select id="filterStatus" class="rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400 transition">
+            <option value="">Todos</option>
+            <option>Backlog</option>
+            <option>Em andamento</option>
+            <option>Bloqueado</option>
+            <option>Concluído</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="filterPriority">Prioridade</label>
+          <select id="filterPriority" class="rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400 transition">
+            <option value="">Todas</option>
+            <option>Baixa</option>
+            <option>Média</option>
+            <option>Alta</option>
+            <option>Crítica</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="filterAssignee">Responsável</label>
+          <input id="filterAssignee" class="rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400 transition" placeholder="Ex.: Ana" autocomplete="off" />
+        </div>
+        <div class="flex gap-2 mt-2 md:mt-0">
+          <button id="tabList" class="px-4 py-2 rounded-2xl bg-slate-200 hover:bg-sky-100 transition">Lista</button>
+          <button id="tabKanban" class="px-4 py-2 rounded-2xl bg-slate-200 hover:bg-sky-100 transition">Kanban</button>
+          <button id="btnResetFilters" class="px-4 py-2 rounded-2xl bg-rose-100 text-rose-700 hover:bg-rose-200 transition hidden flex items-center gap-2" type="reset" title="Limpar filtros" aria-label="Limpar filtros">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            <span class="hidden sm:inline">Limpar Filtros</span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Lista -->
+    <section id="viewList" class="bg-white rounded-2xl shadow overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-100 sticky top-0 z-10">
+          <tr>
+            <th class="text-left px-4 py-3">ID</th>
+            <th class="text-left px-4 py-3">Título</th>
+            <th class="text-left px-4 py-3">Responsável</th>
+            <th class="text-left px-4 py-3">Prazo</th>
+            <th class="text-left px-4 py-3">Prioridade</th>
+            <th class="text-left px-4 py-3">Status</th>
+            <th class="text-left px-4 py-3">Tags</th>
+            <th class="text-left px-4 py-3">Anexos</th>
+            <th class="px-4 py-3">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="taskTable"></tbody>
+      </table>
+    </section>
+
+    <!-- Kanban -->
+    <section id="viewKanban" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></section>
+  </div>
+
+  <!-- Modal: Tarefa -->
+  <dialog id="taskModal" class="rounded-2xl w-11/12 max-w-3xl p-0 shadow-2xl">
+    <form id="taskForm" class="bg-white rounded-2xl">
+      <div class="flex justify-between items-center px-5 py-4 border-b">
+        <h3 id="modalTitle" class="text-lg font-semibold">Nova Atividade</h3>
+        <button type="button" id="btnCloseModal" class="p-2 rounded-xl hover:bg-slate-100">✕</button>
+      </div>
+      <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium mb-1" for="inputTitle">Título *</label>
+          <input required name="title" id="inputTitle" class="w-full rounded-xl border border-slate-300 px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="inputAssignee">Responsável</label>
+          <input name="assignee" id="inputAssignee" class="w-full rounded-xl border border-slate-300 px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="inputDue">Prazo</label>
+          <input type="date" name="due" id="inputDue" class="w-full rounded-xl border border-slate-300 px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="inputPriority">Prioridade</label>
+          <select name="priority" id="inputPriority" class="w-full rounded-xl border border-slate-300 px-3 py-2">
+            <option>Baixa</option>
+            <option>Média</option>
+            <option selected>Alta</option>
+            <option>Crítica</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="inputStatus">Status</label>
+          <select name="status" id="inputStatus" class="w-full rounded-xl border border-slate-300 px-3 py-2">
+            <option>Backlog</option>
+            <option selected>Em andamento</option>
+            <option>Bloqueado</option>
+            <option>Concluído</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="inputSetor">Setor</label>
+          <select name="setor" id="inputSetor" class="w-full rounded-xl border border-slate-300 px-3 py-2">
+            <option value="">Carregando...</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="inputTags">Tags</label>
+          <input name="tags" id="inputTags" class="w-full rounded-xl border border-slate-300 px-3 py-2" placeholder="ex.: fiscal, SAP" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium mb-1" for="inputDescription">Descrição</label>
+          <textarea name="description" id="inputDescription" rows="3" class="w-full rounded-xl border border-slate-300 px-3 py-2"></textarea>
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium mb-2">Anexos</label>
+          <div id="dropArea" class="dropzone p-4 text-sm text-slate-600 flex flex-col items-center justify-center gap-2">
+            <p>Arraste e solte imagens aqui ou</p>
+            <label class="px-3 py-2 rounded-xl bg-slate-800 text-white cursor-pointer">
+              Selecionar imagens
+              <input type="file" id="imageInput" accept="image/*" multiple class="hidden" />
+            </label>
+          </div>
+          <div id="thumbs" class="mt-3 flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+      <div class="px-5 py-4 border-t flex justify-end gap-2">
+        <button type="button" id="btnClearAnexos" class="px-4 py-2 rounded-2xl bg-slate-200 hover:bg-sky-100 transition">Limpar anexos</button>
+        <button type="submit" class="px-4 py-2 rounded-2xl bg-sky-600 text-white hover:bg-sky-700 transition">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal: Detalhes -->
+  <dialog id="detailModal" class="rounded-2xl w-11/12 max-w-3xl p-0 shadow-2xl">
+    <div class="bg-white rounded-2xl">
+      <div class="flex justify-between items-center px-5 py-4 border-b">
+        <h3 class="text-lg font-semibold">Detalhes da Atividade</h3>
+        <button type="button" id="btnCloseDetail" class="p-2 rounded-xl hover:bg-slate-100">✕</button>
+      </div>
+      <div id="detailBody" class="p-5 space-y-3 text-sm"></div>
+      <div class="px-5 py-4 border-t text-right">
+        <button type="button" id="btnCloseDetail2" class="px-4 py-2 rounded-2xl bg-slate-200">Fechar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Visualizar Imagem -->
+  <dialog id="imageModal" class="rounded-2xl w-11/12 max-w-5xl p-0 shadow-2xl backdrop:bg-black backdrop:bg-opacity-75">
+    <div class="relative bg-white rounded-2xl">
+      <button type="button" id="btnCloseImage" class="absolute top-4 right-4 z-10 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 transition shadow-lg">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      <div class="p-6">
+        <div class="text-center mb-4">
+          <h3 id="imageModalTitle" class="text-xl font-semibold text-slate-800"></h3>
+        </div>
+        <div class="flex justify-center bg-slate-50 rounded-xl p-4 border">
+          <img id="imageModalImg" src="" alt="" class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-sm" />
+        </div>
+        <div class="mt-6 flex justify-center gap-3">
+          <button type="button" id="btnDownloadImage" class="px-6 py-3 rounded-xl bg-slate-600 text-white hover:bg-slate-700 transition shadow flex items-center gap-2">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Baixar Imagem
+          </button>
+          <button type="button" id="btnOpenImageNewTab" class="px-6 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition shadow flex items-center gap-2">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+            </svg>
+            Abrir em Nova Aba
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Gerenciar Status -->
+  <dialog id="statusModal" class="rounded-2xl w-11/12 max-w-2xl p-0 shadow-2xl">
+    <div class="bg-white rounded-2xl">
+      <div class="flex justify-between items-center px-5 py-4 border-b">
+        <h3 class="text-lg font-semibold">Gerenciar Status</h3>
+        <button type="button" id="btnCloseStatusModal" class="p-2 rounded-xl hover:bg-slate-100">✕</button>
+      </div>
+      <div class="p-5">
+        <!-- Adicionar novo status -->
+        <div class="mb-6 p-4 bg-slate-50 rounded-xl">
+          <h4 class="font-medium mb-3">Adicionar Novo Status</h4>
+          <div class="flex gap-3 items-end">
+            <div class="flex-1">
+              <label class="block text-sm font-medium mb-1">Nome do Status</label>
+              <input type="text" id="newStatusName" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400" placeholder="Ex: Aguardando Aprovação">
+            </div>
+            <div class="flex-1">
+              <label class="block text-sm font-medium mb-1">Cor (classe CSS)</label>
+              <select id="newStatusColor" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                <option value="bg-slate-200 text-slate-800">Cinza (Padrão)</option>
+                <option value="bg-blue-100 text-blue-800">Azul</option>
+                <option value="bg-indigo-100 text-indigo-800">Índigo</option>
+                <option value="bg-purple-100 text-purple-800">Roxo</option>
+                <option value="bg-pink-100 text-pink-800">Rosa</option>
+                <option value="bg-red-100 text-red-800">Vermelho</option>
+                <option value="bg-orange-100 text-orange-800">Laranja</option>
+                <option value="bg-amber-100 text-amber-800">Âmbar</option>
+                <option value="bg-yellow-100 text-yellow-800">Amarelo</option>
+                <option value="bg-green-100 text-green-800">Verde</option>
+                <option value="bg-emerald-100 text-emerald-800">Esmeralda</option>
+                <option value="bg-teal-100 text-teal-800">Verde-azulado</option>
+                <option value="bg-cyan-100 text-cyan-800">Ciano</option>
+              </select>
+            </div>
+            <button type="button" id="btnAddStatus" class="px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition">
+              Adicionar
+            </button>
+          </div>
+        </div>
+
+        <!-- Lista de status existentes -->
+        <div>
+          <h4 class="font-medium mb-3">Status Existentes</h4>
+          <div id="statusList" class="space-y-2">
+            <!-- Status serão carregados dinamicamente aqui -->
+          </div>
+        </div>
+      </div>
+      <div class="px-5 py-4 border-t text-right">
+        <button type="button" id="btnCloseStatusModal2" class="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 transition">Fechar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Gerenciamento de Usuários -->
+  <dialog id="userManagementModal" class="rounded-2xl w-11/12 max-w-5xl p-0 shadow-2xl backdrop:bg-black backdrop:bg-opacity-50">
+    <div class="bg-white rounded-2xl max-h-[90vh] overflow-y-auto">
+      <div class="sticky top-0 z-10 flex justify-between items-center px-6 py-4 border-b bg-blue-600">
+        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Gerenciamento de Usuários
+        </h3>
+        <button type="button" id="btnCloseUserManagement" class="p-2 rounded-xl hover:bg-blue-700 text-white transition">✕</button>
+      </div>
+      
+      <div class="p-6">
+        <!-- Adicionar novo usuário -->
+        <div class="mb-6 p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-200">
+          <h4 class="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Adicionar Novo Usuário
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-sm font-medium mb-1 text-blue-900">Nome *</label>
+              <input type="text" id="newUserName" class="w-full rounded-xl border border-blue-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: João Silva">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1 text-blue-900">Email *</label>
+              <input type="email" id="newUserEmail" class="w-full rounded-xl border border-blue-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="joao@empresa.com">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1 text-blue-900">Setor *</label>
+              <select id="newUserSetor" class="w-full rounded-xl border border-blue-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Carregando...</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+            <div>
+              <label class="block text-sm font-medium mb-1 text-blue-900">Tipo de Usuário *</label>
+              <select id="newUserType" class="w-full rounded-xl border border-blue-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="user">Usuário Normal</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+            <div class="flex items-center pt-7">
+              <label class="flex items-center gap-2 text-sm text-blue-900 cursor-pointer">
+                <input type="checkbox" id="newUserActive" checked class="w-4 h-4 accent-blue-600 rounded">
+                <span>Usuário Ativo</span>
+              </label>
+            </div>
+            <div class="flex items-end">
+              <button type="button" id="btnAddUser" class="w-full px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition font-medium flex items-center justify-center gap-2">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Adicionar Usuário
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtros e busca -->
+        <div class="mb-4 flex flex-col md:flex-row gap-3">
+          <div class="flex-1">
+            <input type="text" id="searchUsers" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="🔍 Buscar por nome ou email...">
+          </div>
+          <div>
+            <select id="filterUserSetor" class="rounded-xl border border-slate-300 bg-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+              <option value="">Todos os setores</option>
+            </select>
+          </div>
+          <div>
+            <select id="filterUserStatus" class="rounded-xl border border-slate-300 bg-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+              <option value="">Todos</option>
+              <option value="true">Ativos</option>
+              <option value="false">Inativos</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Lista de usuários -->
+        <div class="bg-slate-50 rounded-xl border overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-slate-200 sticky top-0">
+                <tr>
+                  <th class="text-left px-4 py-3 font-semibold">Nome</th>
+                  <th class="text-left px-4 py-3 font-semibold">Email</th>
+                  <th class="text-left px-4 py-3 font-semibold">Setor</th>
+                  <th class="text-left px-4 py-3 font-semibold">Tipo</th>
+                  <th class="text-center px-4 py-3 font-semibold">Status</th>
+                  <th class="text-center px-4 py-3 font-semibold">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="userTableBody" class="divide-y divide-slate-200 bg-white">
+                <!-- Usuários serão carregados dinamicamente aqui -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div id="userListEmpty" class="hidden text-center py-8 text-slate-500">
+          <svg class="mx-auto mb-2" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <p>Nenhum usuário encontrado</p>
+        </div>
+      </div>
+      
+      <div class="sticky bottom-0 px-6 py-4 border-t bg-slate-50">
+        <button type="button" id="btnCloseUserManagement2" class="w-full md:w-auto px-6 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 transition font-medium">Fechar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Gerenciamento de Setores -->
+  <dialog id="setorManagementModal" class="rounded-2xl w-11/12 max-w-4xl p-0 shadow-2xl backdrop:bg-black backdrop:bg-opacity-50">
+    <div class="bg-white rounded-2xl max-h-[90vh] overflow-y-auto">
+      <div class="sticky top-0 z-10 flex justify-between items-center px-6 py-4 border-b bg-green-600">
+        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          Gerenciamento de Setores
+        </h3>
+        <button type="button" id="btnCloseSetorManagement" class="p-2 rounded-xl hover:bg-green-700 text-white transition">✕</button>
+      </div>
+      
+      <div class="p-6">
+        <!-- Adicionar novo setor -->
+        <div class="mb-6 p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border-2 border-green-200">
+          <h4 class="font-semibold text-green-900 mb-3 flex items-center gap-2">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Adicionar Novo Setor
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium mb-1 text-green-900">Nome do Setor *</label>
+              <input type="text" id="newSetorNome" class="w-full rounded-xl border border-green-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Ex: Controladoria">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1 text-green-900">Cor *</label>
+              <input type="color" id="newSetorCor" value="#3b82f6" class="w-full h-10 rounded-xl border border-green-300 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            <div class="flex items-end">
+              <button type="button" id="btnAddSetor" class="w-full px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition font-medium flex items-center justify-center gap-2">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Adicionar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtros e busca -->
+        <div class="mb-4 flex flex-col md:flex-row gap-3">
+          <div class="flex-1">
+            <input type="text" id="searchSetores" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400" placeholder="🔍 Buscar setor...">
+          </div>
+          <div>
+            <select id="filterSetorStatus" class="rounded-xl border border-slate-300 bg-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400">
+              <option value="">Todos</option>
+              <option value="true">Ativos</option>
+              <option value="false">Inativos</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Lista de setores -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="setorCardContainer">
+          <!-- Setores serão carregados dinamicamente aqui -->
+        </div>
+        
+        <div id="setorListEmpty" class="hidden text-center py-8 text-slate-500">
+          <svg class="mx-auto mb-2" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <p>Nenhum setor encontrado</p>
+        </div>
+      </div>
+      
+      <div class="sticky bottom-0 px-6 py-4 border-t bg-slate-50">
+        <button type="button" id="btnCloseSetorManagement2" class="w-full md:w-auto px-6 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 transition font-medium">Fechar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Pendências de Aprovação -->
+  <dialog id="pendingApprovalsModal" class="rounded-2xl w-11/12 max-w-4xl p-0 shadow-2xl backdrop:bg-black backdrop:bg-opacity-50">
+    <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center px-6 py-4 border-b border-orange-200 bg-orange-600">
+        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Pendências de Aprovação
+          <span id="pendingModalBadge" class="bg-red-500 text-white text-sm px-3 py-1 rounded-full hidden">0</span>
+        </h3>
+        <div class="flex gap-2">
+          <button type="button" id="btnRefreshPending" class="px-3 py-2 bg-white text-orange-600 rounded-lg hover:bg-orange-50 transition text-sm font-medium">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="inline">
+              <path d="M21 12a9 9 0 11-6.219-8.56"/>
+            </svg>
+            Atualizar
+          </button>
+          <button type="button" id="btnClosePendingModal" class="p-2 rounded-xl hover:bg-orange-700 text-white transition">✕</button>
+        </div>
+      </div>
+      
+      <div class="p-6 overflow-y-auto flex-1">
+        <div id="pendingListContainer" class="space-y-4">
+          <div class="text-center text-gray-500 py-12" id="noPendingMessage">
+            <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" class="mx-auto mb-4 text-gray-400">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-lg font-medium">Nenhuma pendência no momento</p>
+            <p class="text-sm text-gray-400 mt-2">Todas as tarefas foram confirmadas</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="sticky bottom-0 px-6 py-4 border-t bg-orange-50">
+        <button type="button" id="btnClosePendingModal2" class="w-full md:w-auto px-6 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 transition font-medium">Fechar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Painel Admin -->
+  <dialog id="adminPanel" class="rounded-2xl w-11/12 max-w-md p-0 shadow-2xl backdrop:bg-black backdrop:bg-opacity-50">
+    <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl">
+      <div class="flex justify-between items-center px-6 py-4 border-b border-purple-200 bg-purple-600">
+        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2z"/>
+            <path d="M12 3v4m0 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+          </svg>
+          Painel de Administração
+        </h3>
+        <button type="button" id="btnCloseAdminPanel" class="p-2 rounded-xl hover:bg-purple-700 text-white transition">✕</button>
+      </div>
+      <div class="p-6 space-y-3">
+        <p class="text-sm text-purple-800 mb-4">Escolha uma opção:</p>
+        
+        <!-- Opção 1: Gerenciar Usuários -->
+        <button type="button" class="admin-option w-full flex items-start gap-4 p-4 bg-white rounded-xl hover:bg-purple-50 hover:shadow-md transition group border-2 border-transparent hover:border-purple-300" data-option="users">
+          <div class="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 transition">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-blue-600">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <div class="flex-1 text-left">
+            <h4 class="font-semibold text-gray-800 mb-1">Gerenciar Usuários</h4>
+            <p class="text-xs text-gray-600">Criar, editar e gerenciar permissões de usuários</p>
+          </div>
+        </button>
+
+        <!-- Opção 2: Gerenciar Setores -->
+        <button type="button" class="admin-option w-full flex items-start gap-4 p-4 bg-white rounded-xl hover:bg-purple-50 hover:shadow-md transition group border-2 border-transparent hover:border-purple-300" data-option="setores">
+          <div class="flex-shrink-0 w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-200 transition">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-green-600">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <div class="flex-1 text-left">
+            <h4 class="font-semibold text-gray-800 mb-1">Gerenciar Setores</h4>
+            <p class="text-xs text-gray-600">Criar e organizar setores da empresa</p>
+          </div>
+        </button>
+
+        <!-- Opção 3: Relatórios Administrativos -->
+        <button type="button" class="admin-option w-full flex items-start gap-4 p-4 bg-white rounded-xl hover:bg-purple-50 hover:shadow-md transition group border-2 border-transparent hover:border-purple-300" data-option="relatorios">
+          <div class="flex-shrink-0 w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center group-hover:bg-amber-200 transition">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-amber-600">
+              <path d="M3 3v18h18"/>
+              <path d="M18 17V9"/>
+              <path d="M13 17V5"/>
+              <path d="M8 17v-3"/>
+            </svg>
+          </div>
+          <div class="flex-1 text-left">
+            <h4 class="font-semibold text-gray-800 mb-1">Relatórios Administrativos</h4>
+            <p class="text-xs text-gray-600">Análises avançadas e estatísticas</p>
+          </div>
+        </button>
+      </div>
+      <div class="px-6 py-4 border-t border-purple-200 bg-purple-50 rounded-b-2xl">
+        <button type="button" id="btnCancelAdminPanel" class="w-full px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 transition font-medium">Cancelar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Módulos JavaScript -->
+  <script type="module" src="./assets/js/main.js"></script>
+</body>
+</html>
