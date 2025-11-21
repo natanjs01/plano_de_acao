@@ -30,6 +30,30 @@ export async function checkAuthStatus() {
       return;
     }
     
+    // Verificar se o login foi feito via OTP válido
+    const validOtpTimestamp = localStorage.getItem('plano-acao-valid-otp');
+    if (!validOtpTimestamp) {
+      console.log('❌ Sessão encontrada mas sem validação OTP - fazendo logout');
+      await supabaseClient.auth.signOut();
+      localStorage.removeItem('plano-acao-auth');
+      showLoginScreen();
+      return;
+    }
+    
+    // Verificar se a sessão OTP está expirada (24 horas)
+    const otpTime = new Date(validOtpTimestamp);
+    const now = new Date();
+    const hoursSinceOtp = (now - otpTime) / (1000 * 60 * 60);
+    
+    if (hoursSinceOtp > 24) {
+      console.log('⏰ Sessão OTP expirada (mais de 24 horas) - fazendo logout');
+      await supabaseClient.auth.signOut();
+      localStorage.removeItem('plano-acao-auth');
+      localStorage.removeItem('plano-acao-valid-otp');
+      showLoginScreen();
+      return;
+    }
+    
     // Se há sessão, verificar se usuário existe no banco
     console.log('✅ Sessão ativa encontrada para:', session.user.email);
     
@@ -43,6 +67,7 @@ export async function checkAuthStatus() {
     if (userError || !userData || !userData.ativo) {
       console.log('❌ Usuário não encontrado ou inativo - fazendo logout');
       await supabaseClient.auth.signOut();
+      localStorage.removeItem('plano-acao-valid-otp');
       showLoginScreen();
       return;
     }
@@ -294,6 +319,10 @@ export async function verifyCode(email, code) {
       document.getElementById('codeInput').focus();
     } else {
       console.log('Login realizado com sucesso:', data);
+      
+      // Marcar que o login foi feito via OTP válido
+      localStorage.setItem('plano-acao-valid-otp', new Date().toISOString());
+      
       await handleUserLogin(data.user);
     }
   } catch (error) {
@@ -320,6 +349,11 @@ export async function logout() {
     
     // Fazer logout no Supabase
     await supabaseClient.auth.signOut();
+    
+    // Limpar COMPLETAMENTE o localStorage
+    localStorage.removeItem('plano-acao-auth');
+    localStorage.removeItem('plano-acao-valid-otp');
+    localStorage.removeItem('sb-iynsvuugjjbvjacrjmig-auth-token');
     
     // Limpar estado da aplicação
     updateAppState('currentUser', null);
