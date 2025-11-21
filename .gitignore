@@ -1,0 +1,43 @@
+# ====================================
+# GITIGNORE - PLANO DE AÇÃO
+# ====================================
+
+# Node modules (se usar build tools no futuro)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ambiente
+.env
+.env.local
+.env.*.local
+
+# IDE / Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema Operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+
+# Temporários
+temp/
+tmp/
+*.tmp
+
+# Backup (opcional - descomente se quiser ignorar backups)
+# *.bak
+# *_backup.*
+
+# Build outputs (se adicionar build process)
+dist/
+build/

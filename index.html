@@ -391,6 +391,125 @@
     </div>
   </dialog>
 
+  <!-- Modal: Solicitar Confirmação de Conclusão -->
+  <dialog id="confirmationRequestModal" class="rounded-2xl w-11/12 max-w-2xl p-0 shadow-2xl">
+    <div class="bg-white rounded-2xl max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center p-5 border-b bg-green-50">
+        <h3 class="text-xl font-semibold text-green-800">✅ Solicitar Confirmação de Conclusão</h3>
+        <button type="button" id="btnCloseConfirmationModal" class="p-2 rounded-xl hover:bg-slate-100">✕</button>
+      </div>
+      
+      <form id="confirmationForm" class="flex-1 overflow-y-auto p-5">
+        <div class="mb-4">
+          <p class="text-sm text-slate-600 mb-3">Você está solicitando a confirmação de conclusão para a seguinte tarefa:</p>
+          <div class="bg-slate-50 p-4 rounded-lg border">
+            <h4 id="confirmationTaskTitle" class="font-medium text-slate-800 mb-2"></h4>
+            <p id="confirmationTaskDescription" class="text-sm text-slate-600"></p>
+          </div>
+        </div>
+        
+        <div class="mb-6">
+          <label for="confirmationNotes" class="block text-sm font-medium text-slate-700 mb-2">
+            Observações sobre a conclusão <span class="text-slate-400">(opcional)</span>
+          </label>
+          <textarea 
+            id="confirmationNotes" 
+            rows="4" 
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+            placeholder="Descreva brevemente como a tarefa foi concluída ou adicione observações relevantes..."
+          ></textarea>
+          <p class="text-xs text-slate-500 mt-1">Estas observações ajudarão o administrador a avaliar a conclusão da tarefa.</p>
+        </div>
+        
+        <div class="flex justify-end gap-3 pt-4 border-t">
+          <button type="button" id="btnCancelConfirmationRequest" class="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 transition">
+            Cancelar
+          </button>
+          <button type="submit" class="px-6 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition font-medium">
+            Enviar Solicitação
+          </button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Modal: Aprovar/Rejeitar Solicitação de Conclusão -->
+  <dialog id="approvalModal" class="rounded-2xl w-11/12 max-w-3xl p-0 shadow-2xl">
+    <div class="bg-white rounded-2xl max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center p-5 border-b bg-blue-50">
+        <h3 class="text-xl font-semibold text-blue-800">⚖️ Avaliar Solicitação de Conclusão</h3>
+        <button type="button" id="btnCloseApprovalModal" class="p-2 rounded-xl hover:bg-slate-100">✕</button>
+      </div>
+      
+      <div class="flex-1 overflow-y-auto p-5">
+        <!-- Informações da Tarefa -->
+        <div class="mb-6">
+          <h4 class="font-semibold text-gray-800 mb-3">📋 Informações da Tarefa</h4>
+          <div class="bg-slate-50 p-4 rounded-lg border">
+            <h5 id="approvalTaskTitle" class="font-medium text-slate-800 mb-2"></h5>
+            <p id="approvalTaskDescription" class="text-sm text-slate-600 mb-2"></p>
+            <div class="flex gap-4 text-xs text-slate-500">
+              <span>👤 <span id="approvalTaskAssignee"></span></span>
+              <span>📅 <span id="approvalTaskDue"></span></span>
+              <span>🏷️ <span id="approvalTaskStatus"></span></span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Informações da Solicitação -->
+        <div class="mb-6">
+          <h4 class="font-semibold text-gray-800 mb-3">📤 Solicitação de Conclusão</h4>
+          <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+            <div class="flex gap-4 text-sm text-green-700 mb-2">
+              <span>👤 Solicitado por: <span id="approvalRequestedBy" class="font-medium"></span></span>
+              <span>📅 Em: <span id="approvalRequestedAt" class="font-medium"></span></span>
+            </div>
+            <div>
+              <p class="text-sm text-gray-700 font-medium mb-1">Observações do usuário:</p>
+              <p id="approvalUserNotes" class="text-sm text-gray-600 bg-white p-3 rounded border italic"></p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Decisão do Administrador -->
+        <div class="mb-6">
+          <h4 class="font-semibold text-gray-800 mb-3">⚖️ Sua Decisão</h4>
+          <div class="flex gap-4 mb-4">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="approvalDecision" value="approve" class="text-green-600">
+              <span class="bg-green-100 text-green-800 px-3 py-2 rounded-lg font-medium">✅ Aprovar Conclusão</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="approvalDecision" value="reject" class="text-red-600">
+              <span class="bg-red-100 text-red-800 px-3 py-2 rounded-lg font-medium">❌ Rejeitar Solicitação</span>
+            </label>
+          </div>
+          
+          <div>
+            <label for="adminNotes" class="block text-sm font-medium text-slate-700 mb-2">
+              Observações administrativas <span class="text-slate-400">(opcional)</span>
+            </label>
+            <textarea 
+              id="adminNotes" 
+              rows="3" 
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              placeholder="Adicione observações sobre sua decisão..."
+            ></textarea>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex justify-end gap-3 p-5 border-t bg-gray-50">
+        <button type="button" id="btnCancelApproval" class="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 transition">
+          Cancelar
+        </button>
+        <button type="button" id="btnConfirmApproval" class="px-6 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition font-medium">
+          Confirmar Decisão
+        </button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Modal: Gerenciar Status -->
   <dialog id="statusModal" class="rounded-2xl w-11/12 max-w-2xl p-0 shadow-2xl">
     <div class="bg-white rounded-2xl">
