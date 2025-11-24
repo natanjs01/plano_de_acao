@@ -934,7 +934,7 @@ function addSetorButtonListeners() {
   // Botões de editar
   document.querySelectorAll('.btn-edit-setor').forEach(btn => {
     btn.addEventListener('click', function() {
-      const id = parseInt(this.getAttribute('data-setor-id'));
+      const id = this.getAttribute('data-setor-id'); // UUID, não parseInt
       const nome = this.getAttribute('data-setor-nome');
       const cor = this.getAttribute('data-setor-cor');
       editSetor(id, nome, cor);
@@ -944,7 +944,7 @@ function addSetorButtonListeners() {
   // Botões de toggle status
   document.querySelectorAll('.btn-toggle-setor').forEach(btn => {
     btn.addEventListener('click', function() {
-      const id = parseInt(this.getAttribute('data-setor-id'));
+      const id = this.getAttribute('data-setor-id'); // UUID, não parseInt
       const ativo = this.getAttribute('data-setor-ativo') === 'true';
       toggleSetorStatusBtn(id, ativo);
     });
@@ -953,7 +953,7 @@ function addSetorButtonListeners() {
   // Botões de deletar
   document.querySelectorAll('.btn-delete-setor').forEach(btn => {
     btn.addEventListener('click', function() {
-      const id = parseInt(this.getAttribute('data-setor-id'));
+      const id = this.getAttribute('data-setor-id'); // UUID, não parseInt
       const nome = this.getAttribute('data-setor-nome');
       deleteSetorBtn(id, nome);
     });
