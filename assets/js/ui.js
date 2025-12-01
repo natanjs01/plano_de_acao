@@ -133,7 +133,8 @@ export function applyFilters(tasks) {
         const tags = (task.tags || []).join(' ').toLowerCase();
         if (!tags.includes(searchTerm)) return false;
       } else {
-        const searchableText = `${task.title} ${task.description} ${task.assignee} ${(task.tags || []).join(' ')}`.toLowerCase();
+        // Incluir sequential_id na busca
+        const searchableText = `${task.sequential_id || ''} ${task.title} ${task.description} ${task.assignee} ${(task.tags || []).join(' ')}`.toLowerCase();
         if (!searchableText.includes(searchTerm)) return false;
       }
     }
