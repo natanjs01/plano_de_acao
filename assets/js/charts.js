@@ -3,6 +3,7 @@
 // ====================================
 
 import { APP_STATE, CHART_COLORS, STATUS_COLORS, PRIORITY_COLORS } from './config.js';
+import { parseLocalDate } from './ui.js';
 
 let statusChart = null;
 let priorityChart = null;
@@ -190,7 +191,9 @@ export function updateKPIs() {
   const atrasadas = tasks.filter(t => {
     if (t.status === 'Concluído') return false;
     if (!t.due_date && !t.due) return false;
-    const prazo = new Date(t.due_date || t.due);
+    const prazo = parseLocalDate(t.due_date || t.due);
+    if (!prazo) return false;
+    prazo.setHours(0, 0, 0, 0);
     return prazo < hoje;
   }).length;
 

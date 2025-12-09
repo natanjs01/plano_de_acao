@@ -8,10 +8,39 @@ import { updateCharts, updateKPIs } from './charts.js';
 import { hasPermission, canEditTask, canDeleteTask, canApproveTask, filterTasksByPermission } from './permissions.js';
 
 // ====== UTILITÁRIOS ======
+
+/**
+ * Formata data evitando problemas de timezone
+ * Converte YYYY-MM-DD para data local sem ajuste UTC
+ */
 export function formatDate(dateStr) {
   if (!dateStr) return '—';
+  
+  // Se a data está no formato YYYY-MM-DD (do input type="date")
+  if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+  }
+  
+  // Para outros formatos, usar Date normal
   const date = new Date(dateStr);
   return date.toLocaleDateString('pt-BR');
+}
+
+/**
+ * Converte string de data para Date local (sem timezone UTC)
+ * Usado para comparações e cálculos
+ */
+export function parseLocalDate(dateStr) {
+  if (!dateStr) return null;
+  
+  // Se está no formato YYYY-MM-DD
+  if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day); // Cria data local
+  }
+  
+  return new Date(dateStr);
 }
 
 // ====== RENDERIZAÇÃO ======
