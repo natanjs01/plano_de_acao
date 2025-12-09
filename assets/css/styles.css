@@ -2,6 +2,74 @@
    PLANO DE AÇÃO - ESTILOS CUSTOMIZADOS
    ==================================== */
 
+/* ====================================
+   IDENTIDADE VISUAL GRUPO LÍDER
+   ==================================== */
+:root {
+  /* Cores da marca Grupo Líder */
+  --lider-red: #E31E24;        /* Vermelho principal */
+  --lider-red-dark: #B71419;   /* Vermelho escuro (hover) */
+  --lider-red-light: #FF4449;  /* Vermelho claro */
+  --lider-gray: #4A4A4A;       /* Cinza escuro (texto) */
+  --lider-gray-light: #6B6B6B; /* Cinza médio */
+  
+  /* Paleta para gráficos Chart.js */
+  --chart-bg: #fff;
+  --chart-fg: #0f172a;
+  --chart-emerald: #3ba97d;
+  --chart-sky: #2586b6;
+  --chart-amber: #bfa13b;
+  --chart-rose: var(--lider-red);
+  --chart-slate: #6b7a8c;
+}
+
+/* Logo Grupo Líder */
+.logo-lider {
+  max-width: 180px;
+  height: auto;
+  display: block;
+}
+
+.logo-lider-small {
+  max-width: 120px;
+  height: auto;
+  display: block;
+}
+
+/* Botões com cores Grupo Líder */
+.btn-lider-primary {
+  background-color: var(--lider-red) !important;
+  color: white !important;
+}
+
+.btn-lider-primary:hover {
+  background-color: var(--lider-red-dark) !important;
+}
+
+.btn-lider-outline {
+  border: 2px solid var(--lider-red) !important;
+  color: var(--lider-red) !important;
+  background-color: transparent !important;
+}
+
+.btn-lider-outline:hover {
+  background-color: var(--lider-red) !important;
+  color: white !important;
+}
+
+/* Badge/Tag com cores Grupo Líder */
+.badge-lider {
+  background-color: #FFE8E9 !important;
+  color: var(--lider-red) !important;
+  border: 1px solid #FFCCCD !important;
+}
+
+/* Input com foco Grupo Líder */
+.input-lider:focus {
+  --tw-ring-color: #E31E24 !important;
+  border-color: #E31E24 !important;
+}
+
 /* Responsividade para rotação horizontal em dispositivos móveis */
 @media screen and (max-width: 900px) and (orientation: landscape) {
   /* Cards de KPI em linha única com rolagem horizontal */
@@ -67,21 +135,12 @@
   }
 }
 
-/* Paleta para gráficos Chart.js (usada via getComputedStyle) */
-:root {
-  --chart-bg: #fff;
-  --chart-fg: #0f172a;
-  --chart-emerald: #3ba97d;
-  --chart-sky: #2586b6;
-  --chart-amber: #bfa13b;
-  --chart-rose: #b85c6b;
-  --chart-slate: #6b7a8c;
-}
+/* Paleta para gráficos Chart.js (usada via getComputedStyle) - REMOVIDO (já está no :root acima) */
 
-/* Scrollbar customizada */
+/* Scrollbar customizada com cores Grupo Líder */
 * { 
   scrollbar-width: thin; 
-  scrollbar-color: #CBD5E1 transparent; 
+  scrollbar-color: #FFB3B5 transparent; 
 }
 
 ::-webkit-scrollbar { 
@@ -90,24 +149,28 @@
 }
 
 ::-webkit-scrollbar-thumb { 
-  background: #cbd5e1; 
+  background: #FFB3B5; 
   border-radius: 9999px; 
+}
+
+::-webkit-scrollbar-thumb:hover { 
+  background: var(--lider-red); 
 }
 
 ::-webkit-scrollbar-track { 
   background: transparent; 
 }
 
-/* Dropzone para anexos */
+/* Dropzone para anexos com cores Grupo Líder */
 .dropzone {
-  border: 2px dashed #94a3b8; 
+  border: 2px dashed #FFB3B5; 
   border-radius: 1rem; 
   transition: all .15s ease;
 }
 
 .dropzone.dragover { 
-  border-color: #0ea5e9; 
-  background: #f0f9ff; 
+  border-color: var(--lider-red); 
+  background: #FFF5F5; 
 }
 
 /* Gráficos Chart.js */
