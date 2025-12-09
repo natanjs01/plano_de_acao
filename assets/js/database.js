@@ -5,6 +5,7 @@
 import { supabaseClient, APP_STATE, updateAppState } from './config.js';
 import { showToast } from './auth.js';
 import { refreshAll } from './ui.js';
+import { hasPermission } from './permissions.js';
 
 const STORAGE_KEY = 'tasks_backup';
 
@@ -36,10 +37,15 @@ export async function loadTasksFromSupabase() {
       setores(id, nome, cor)
     `);
     
-    // Aplicar filtros baseados no tipo de usuário
-    if (APP_STATE.isAdmin && APP_STATE.selectedSetorFilter) {
+    // Verificar se usuário pode visualizar todas as tarefas (Admin ou Consultoria)
+    const canViewAllTasks = APP_STATE.isAdmin || hasPermission('tarefas.visualizar');
+    
+    // Aplicar filtros baseados no tipo de usuário e permissões
+    if (canViewAllTasks && APP_STATE.selectedSetorFilter) {
+      // Admin ou Consultoria com filtro de setor selecionado
       query = query.eq('setor_id', APP_STATE.selectedSetorFilter);
-    } else if (!APP_STATE.isAdmin) {
+    } else if (!canViewAllTasks) {
+      // Usuários sem permissão de visualizar tudo veem apenas seu setor
       const userSetorId = APP_STATE.currentUserData?.setor_id || APP_STATE.currentSetor?.id;
       
       if (userSetorId) {
@@ -50,6 +56,7 @@ export async function loadTasksFromSupabase() {
         return;
       }
     }
+    // Se canViewAllTasks = true e selectedSetorFilter não existe, mostra TODAS as tarefas
     
     const { data, error } = await query;
     
@@ -662,15 +669,21 @@ export async function createUser(userData) {
       throw new Error('Nome, email e setor são obrigatórios');
     }
     
-    // Verificar se email já existe
-    const { data: existing } = await supabaseClient
-      .from('usuarios')
-      .select('email')
-      .eq('email', userData.email)
-      .single();
-    
-    if (existing) {
-      throw new Error('Este email já está cadastrado');
+    // Verificar se email já existe (com tratamento de erro RLS)
+    try {
+      const { data: existing, error: emailError } = await supabaseClient
+        .from('usuarios')
+        .select('email')
+        .eq('email', userData.email)
+        .maybeSingle(); // Usa maybeSingle() ao invés de single()
+      
+      // Só verifica se não houve erro e existe registro
+      if (!emailError && existing) {
+        throw new Error('Este email já está cadastrado');
+      }
+    } catch (emailCheckError) {
+      // Se falhar a verificação (RLS), apenas loga mas continua
+      console.warn('⚠️ Não foi possível verificar email duplicado:', emailCheckError.message);
     }
     
     const { data, error } = await supabaseClient
@@ -710,17 +723,23 @@ export async function updateUser(userId, userData) {
       throw new Error('SupabaseClient não disponível');
     }
     
-    // Se está mudando email, verificar se já existe
+    // Se está mudando email, verificar se já existe (com tratamento de erro RLS)
     if (userData.email) {
-      const { data: existing } = await supabaseClient
-        .from('usuarios')
-        .select('id, email')
-        .eq('email', userData.email)
-        .neq('id', userId)
-        .single();
-      
-      if (existing) {
-        throw new Error('Este email já está cadastrado');
+      try {
+        const { data: existing, error: emailError } = await supabaseClient
+          .from('usuarios')
+          .select('id, email')
+          .eq('email', userData.email)
+          .neq('id', userId)
+          .maybeSingle(); // Usa maybeSingle() ao invés de single()
+        
+        // Só verifica se não houve erro e existe registro
+        if (!emailError && existing) {
+          throw new Error('Este email já está cadastrado');
+        }
+      } catch (emailCheckError) {
+        // Se falhar a verificação (RLS), apenas loga mas continua
+        console.warn('⚠️ Não foi possível verificar email duplicado:', emailCheckError.message);
       }
     }
     

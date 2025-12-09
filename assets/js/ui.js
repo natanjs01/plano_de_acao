@@ -5,6 +5,7 @@
 import { APP_STATE, STATUS_COLORS, PRIORITY_COLORS } from './config.js';
 import { loadTasks, createTask, updateTask, deleteTask, saveAttachments, requestCompletion } from './database.js';
 import { updateCharts, updateKPIs } from './charts.js';
+import { hasPermission, canEditTask, canDeleteTask, canApproveTask, filterTasksByPermission } from './permissions.js';
 
 // ====== UTILITÁRIOS ======
 export function formatDate(dateStr) {
@@ -66,9 +67,9 @@ export function renderTaskList() {
       <td class="px-4 py-3">${(task.attachments || []).length > 0 ? `📎 ${task.attachments.length}` : '—'}</td>
       <td class="px-4 py-3">
         <button onclick="window.viewTaskDetails('${task.id}')" class="text-blue-600 hover:text-blue-800 mr-2" title="Ver detalhes">👁️</button>
-        ${APP_STATE.isAdmin ? `<button onclick="window.editTask('${task.id}')" class="text-green-600 hover:text-green-800 mr-2" title="Editar">✏️</button>` : ''}
-        ${APP_STATE.isAdmin ? `<button onclick="window.deleteTaskById('${task.id}')" class="text-red-600 hover:text-red-800" title="Excluir">🗑️</button>` : ''}
-        ${!APP_STATE.isAdmin && task.status !== 'Concluído' && task.confirmation_status !== 'pending' ? `<button onclick="window.requestTaskCompletion('${task.id}')" class="text-green-600 hover:text-green-800 mr-2" title="Solicitar Conclusão">✓</button>` : ''}
+        ${canEditTask(task) ? `<button onclick="window.editTask('${task.id}')" class="text-green-600 hover:text-green-800 mr-2" title="Editar">✏️</button>` : ''}
+        ${canDeleteTask(task) ? `<button onclick="window.deleteTaskById('${task.id}')" class="text-red-600 hover:text-red-800" title="Excluir">🗑️</button>` : ''}
+        ${hasPermission('tarefas.solicitar_conclusao') && task.status !== 'Concluído' && task.confirmation_status !== 'pending' ? `<button onclick="window.requestTaskCompletion('${task.id}')" class="text-green-600 hover:text-green-800 mr-2" title="Solicitar Conclusão">✓</button>` : ''}
         ${task.confirmation_status === 'pending' ? `<span class="text-xs text-yellow-600" title="Aguardando aprovação">⏳ Pendente</span>` : ''}
       </td>
     </tr>
@@ -102,7 +103,7 @@ export function renderKanban() {
                 </div>
                 ${task.due_date || task.due ? `<div class="text-xs text-slate-500 mt-2">📅 ${formatDate(task.due_date || task.due)}</div>` : ''}
               </div>
-              ${!APP_STATE.isAdmin && task.status !== 'Concluído' && task.confirmation_status !== 'pending' ? `
+              ${hasPermission('tarefas.solicitar_conclusao') && task.status !== 'Concluído' && task.confirmation_status !== 'pending' ? `
                 <button onclick="event.stopPropagation(); window.requestTaskCompletion('${task.id}')" class="mt-2 w-full px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 transition" title="Solicitar Conclusão">
                   ✓ Solicitar Conclusão
                 </button>
@@ -214,11 +215,19 @@ export async function updateUserInterface() {
   }
   
   // Mostrar/ocultar botões baseado em permissões
-  const adminButtons = ['btnAdmin', 'btnManageStatus', 'btnNew', 'btnReset', 'btnExport', 'btnImport'];
-  adminButtons.forEach(btnId => {
+  const buttonPermissions = {
+    'btnAdmin': 'usuarios.gerenciar',
+    'btnManageStatus': 'status.gerenciar',
+    'btnNew': 'tarefas.criar',
+    'btnReset': 'sistema.reset',
+    'btnExport': 'sistema.exportar',
+    'btnImport': 'sistema.importar'
+  };
+  
+  Object.entries(buttonPermissions).forEach(([btnId, permission]) => {
     const btn = document.getElementById(btnId);
     if (btn) {
-      if (APP_STATE.isAdmin) {
+      if (hasPermission(permission)) {
         btn.classList.remove('hidden');
       } else {
         btn.classList.add('hidden');
@@ -229,7 +238,8 @@ export async function updateUserInterface() {
   // Mostrar/ocultar filtro de setores
   const setorFilter = document.getElementById('setorFilter');
   if (setorFilter) {
-    if (APP_STATE.isAdmin) {
+    // Admin ou coordenador podem filtrar por setor
+    if (APP_STATE.isAdmin || hasPermission('relatorios.visualizar')) {
       setorFilter.classList.remove('hidden');
       // Carregar setores no dropdown
       await populateSetorFilter();
@@ -286,8 +296,8 @@ export async function loadSetoresInTaskModal() {
   select.innerHTML = '<option value="">Carregando setores...</option>';
   
   try {
-    // Verificar se é admin ou usuário normal
-    if (APP_STATE.isAdmin) {
+    // Verificar se pode criar tarefas em qualquer setor ou apenas no seu
+    if (hasPermission('tarefas.editar.todas')) {
       // Admin pode escolher qualquer setor
       const { data: setores, error } = await supabaseClient
         .from('setores')

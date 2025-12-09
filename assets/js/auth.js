@@ -136,7 +136,10 @@ export async function handleUserLogin(user) {
 
     if (error && error.code === 'PGRST116') {
       console.error('❌ ERRO CRÍTICO: Usuário autenticou mas não existe no banco!');
-      alert('❌ Erro crítico no sistema!\n\nSeu email foi autenticado, mas não foi encontrado no banco de dados.\n\n📞 Contate o administrador imediatamente.');
+      alert('❌ Seu usuário não está autorizado!\n\nProcure um administrador para realizar seu cadastro de acesso.');
+      await supabaseClient.auth.signOut();
+      localStorage.removeItem('plano-acao-auth');
+      localStorage.removeItem('plano-acao-valid-otp');
       showLoginScreen();
       return;
     }
@@ -144,6 +147,20 @@ export async function handleUserLogin(user) {
     if (error) {
       console.error('❌ Erro ao buscar usuário:', error);
       alert('Erro ao buscar usuário no sistema: ' + (error.message || 'Erro desconhecido'));
+      await supabaseClient.auth.signOut();
+      localStorage.removeItem('plano-acao-auth');
+      localStorage.removeItem('plano-acao-valid-otp');
+      showLoginScreen();
+      return;
+    }
+
+    // Verificar se usuário está ativo
+    if (!userData.ativo) {
+      console.log('❌ Usuário inativo:', userData.email);
+      alert('❌ Acesso bloqueado!\n\nSua conta foi desativada.\n\n📞 Entre em contato com o administrador.');
+      await supabaseClient.auth.signOut();
+      localStorage.removeItem('plano-acao-auth');
+      localStorage.removeItem('plano-acao-valid-otp');
       showLoginScreen();
       return;
     }
@@ -206,44 +223,9 @@ export async function sendVerificationCode(email) {
     loginLoading.classList.remove('hidden');
 
     // 🔒 VERIFICAÇÃO DE SEGURANÇA: Email deve estar pré-autorizado
-    console.log('🔍 Verificando se email está autorizado...');
-    
-    const { data: authorizedUser, error: authError } = await supabaseClient
-      .from('usuarios')
-      .select('email, nome, ativo')
-      .eq('email', email)
-      .single();
-
-    console.log('📊 Resultado da verificação:', { authorizedUser, authError });
-
-    // Se email não está cadastrado, bloquear acesso
-    if (authError && authError.code === 'PGRST116') {
-      console.log('❌ Email não autorizado:', email);
-      alert('❌ Seu usuário não está autorizado por um administrador!\n\nProcure um administrador para realizar seu cadastro de acesso.');
-      loginForm.style.display = 'block';
-      loginLoading.classList.add('hidden');
-      return;
-    }
-
-    // Se erro diferente de "não encontrado", mostrar erro
-    if (authError) {
-      console.error('❌ Erro ao verificar autorização:', authError);
-      alert('❌ Erro ao verificar autorização: ' + authError.message);
-      loginForm.style.display = 'block';
-      loginLoading.classList.add('hidden');
-      return;
-    }
-
-    // Se usuário está inativo, bloquear acesso
-    if (!authorizedUser.ativo) {
-      console.log('❌ Usuário inativo:', email);
-      alert('❌ Acesso bloqueado!\n\nSua conta foi desativada.\n\n📞 Entre em contato com o administrador.');
-      loginForm.style.display = 'block';
-      loginLoading.classList.add('hidden');
-      return;
-    }
-
-    console.log('✅ Email autorizado para:', authorizedUser.nome);
+    // TEMPORARIAMENTE COMENTADO - RLS impede acesso antes de autenticar
+    // A validação será feita APÓS o login com OTP
+    console.log('⏭️ Pulando verificação prévia (será validado após OTP)...');
 
     // Enviar código OTP
     console.log('📤 Enviando OTP via Supabase...');

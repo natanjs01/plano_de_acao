@@ -524,6 +524,14 @@ function setupUserManagementListeners() {
     newBtnAddUser.addEventListener('click', handleAddUser);
   }
   
+  // Botão cancelar edição
+  const btnCancel = document.getElementById('btnCancelUserEdit');
+  if (btnCancel) {
+    btnCancel.replaceWith(btnCancel.cloneNode(true));
+    const newBtnCancel = document.getElementById('btnCancelUserEdit');
+    newBtnCancel.addEventListener('click', resetUserForm);
+  }
+  
   // Filtros
   const searchUsers = document.getElementById('searchUsers');
   const filterUserSetor = document.getElementById('filterUserSetor');
@@ -551,10 +559,10 @@ function setupUserManagementListeners() {
 async function handleAddUser() {
   const { createUser } = await import('./database.js');
   
-  const nome = document.getElementById('newUserName')?.value.trim();
+  let nome = document.getElementById('newUserName')?.value.trim();
   const email = document.getElementById('newUserEmail')?.value.trim();
   const setor_id = document.getElementById('newUserSetor')?.value;
-  const is_admin = document.getElementById('newUserType')?.value === 'admin';
+  const userType = document.getElementById('newUserType')?.value;
   const ativo = document.getElementById('newUserActive')?.checked;
   
   if (!nome || !email || !setor_id) {
@@ -569,6 +577,28 @@ async function handleAddUser() {
     return;
   }
   
+  // Determinar is_admin e ajustar nome conforme perfil
+  let is_admin = false;
+  
+  if (userType === 'admin') {
+    is_admin = true;
+  } else if (userType === 'consultoria') {
+    // Adicionar "Consultoria" no nome se ainda não tiver
+    if (!nome.toLowerCase().includes('consultoria')) {
+      nome = `${nome} - Consultoria`;
+    }
+  } else if (userType === 'coordenador') {
+    // Adicionar "Coordenador" no nome se ainda não tiver
+    if (!nome.toLowerCase().includes('coordenador')) {
+      nome = `${nome} - Coordenador`;
+    }
+  } else if (userType === 'supervisor') {
+    // Adicionar "Supervisor" no nome se ainda não tiver
+    if (!nome.toLowerCase().includes('supervisor')) {
+      nome = `${nome} - Supervisor`;
+    }
+  }
+  
   try {
     await createUser({
       nome,
@@ -578,11 +608,13 @@ async function handleAddUser() {
       ativo
     });
     
+    // Toast de sucesso já é exibido pela função createUser no database.js
+    
     // Limpar campos
     document.getElementById('newUserName').value = '';
     document.getElementById('newUserEmail').value = '';
     document.getElementById('newUserSetor').value = '';
-    document.getElementById('newUserType').value = 'user';
+    document.getElementById('newUserType').value = 'usuario';
     document.getElementById('newUserActive').checked = true;
     
     // Recarregar lista
@@ -592,7 +624,52 @@ async function handleAddUser() {
     
   } catch (error) {
     console.error('Erro ao adicionar usuário:', error);
+    alert('❌ Erro ao criar usuário: ' + (error.message || 'Erro desconhecido'));
   }
+}
+
+// Função para resetar o formulário de usuário
+function resetUserForm() {
+  // Limpar campos
+  const nameInput = document.getElementById('newUserName');
+  const emailInput = document.getElementById('newUserEmail');
+  const setorSelect = document.getElementById('newUserSetor');
+  const typeSelect = document.getElementById('newUserType');
+  const activeCheckbox = document.getElementById('newUserActive');
+  
+  if (nameInput) nameInput.value = '';
+  if (emailInput) emailInput.value = '';
+  if (setorSelect) setorSelect.value = '';
+  if (typeSelect) typeSelect.value = 'usuario';
+  if (activeCheckbox) activeCheckbox.checked = true;
+  
+  // Esconder botão cancelar
+  const btnCancel = document.getElementById('btnCancelUserEdit');
+  if (btnCancel) {
+    btnCancel.classList.add('hidden');
+    btnCancel.classList.remove('flex');
+  }
+  
+  // Restaurar botão para modo "adicionar"
+  const btnAddUser = document.getElementById('btnAddUser');
+  if (!btnAddUser) return;
+  
+  const newBtn = document.createElement('button');
+  newBtn.type = 'button';
+  newBtn.id = 'btnAddUser';
+  newBtn.className = 'w-full px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition font-medium flex items-center justify-center gap-2';
+  newBtn.innerHTML = `
+    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Adicionar Usuário
+  `;
+  
+  // Substituir botão
+  btnAddUser.parentNode.replaceChild(newBtn, btnAddUser);
+  
+  // Re-adicionar event listener para adicionar
+  newBtn.addEventListener('click', handleAddUser);
 }
 
 function renderUserList() {
@@ -636,9 +713,26 @@ function renderUserList() {
       ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Ativo</span>'
       : '<span class="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Inativo</span>';
     
-    const tipoBadge = user.is_admin
-      ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Admin</span>'
-      : '<span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Usuário</span>';
+    // Detectar perfil do usuário
+    const userProfile = detectUserProfile(user);
+    let tipoBadge = '';
+    
+    switch(userProfile) {
+      case 'admin':
+        tipoBadge = '<span class="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">👑 Admin</span>';
+        break;
+      case 'consultoria':
+        tipoBadge = '<span class="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">📊 Consultoria</span>';
+        break;
+      case 'coordenador':
+        tipoBadge = '<span class="px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">🎯 Coordenador</span>';
+        break;
+      case 'supervisor':
+        tipoBadge = '<span class="px-2 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">👷 Supervisor</span>';
+        break;
+      default:
+        tipoBadge = '<span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">👤 Usuário</span>';
+    }
     
     return `
       <tr class="hover:bg-slate-50 transition">
@@ -653,13 +747,13 @@ function renderUserList() {
         <td class="px-4 py-3 text-center">${statusBadge}</td>
         <td class="px-4 py-3 text-center">
           <div class="flex items-center justify-center gap-1">
-            <button onclick="editUser(${user.id})" class="p-2 rounded-lg hover:bg-blue-100 text-blue-600 transition" title="Editar">
+            <button onclick="editUser('${user.id}')" class="p-2 rounded-lg hover:bg-blue-100 text-blue-600 transition" title="Editar">
               <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </button>
-            <button onclick="toggleUserStatusBtn(${user.id}, ${user.ativo})" class="p-2 rounded-lg hover:bg-amber-100 text-amber-600 transition" title="${user.ativo ? 'Desativar' : 'Ativar'}">
+            <button onclick="toggleUserStatusBtn('${user.id}', ${user.ativo})" class="p-2 rounded-lg hover:bg-amber-100 text-amber-600 transition" title="${user.ativo ? 'Desativar' : 'Ativar'}">
               <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 ${user.ativo 
                   ? '<path d="M10 9v6m4-6v6m7-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>' 
@@ -667,7 +761,7 @@ function renderUserList() {
                 }
               </svg>
             </button>
-            <button onclick="deleteUserBtn(${user.id}, '${user.nome.replace(/'/g, "\\'")}')" class="p-2 rounded-lg hover:bg-red-100 text-red-600 transition" title="Excluir">
+            <button onclick="deleteUserBtn('${user.id}', '${user.nome.replace(/'/g, "\\'")}')" class="p-2 rounded-lg hover:bg-red-100 text-red-600 transition" title="Excluir">
               <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
               </svg>
@@ -680,37 +774,140 @@ function renderUserList() {
 }
 
 // Funções globais para os botões
+
+// Função auxiliar para detectar perfil do usuário
+function detectUserProfile(user) {
+  if (user.is_admin === true) return 'admin';
+  
+  const nomeLower = user.nome.toLowerCase();
+  if (nomeLower.includes('consultoria')) return 'consultoria';
+  if (nomeLower.includes('coordenador') || nomeLower.includes('coordenadora')) return 'coordenador';
+  if (nomeLower.includes('supervisor') || nomeLower.includes('supervisora')) return 'supervisor';
+  
+  return 'usuario';
+}
+
 async function editUser(userId) {
   const user = allUsersCache.find(u => u.id === userId);
-  if (!user) return;
-  
-  const nome = prompt('Nome:', user.nome);
-  if (nome === null) return;
-  
-  const email = prompt('Email:', user.email);
-  if (email === null) return;
-  
-  const isAdmin = confirm('Usuário é administrador?');
-  
-  if (!nome.trim() || !email.trim()) {
-    alert('Nome e email são obrigatórios');
+  if (!user) {
+    console.error('Usuário não encontrado:', userId);
     return;
   }
   
-  try {
-    const { updateUser } = await import('./database.js');
-    await updateUser(userId, {
-      nome: nome.trim(),
-      email: email.trim(),
-      is_admin: isAdmin
-    });
-    
-    const { loadUsers } = await import('./database.js');
-    allUsersCache = await loadUsers();
-    renderUserList();
-  } catch (error) {
-    console.error('Erro ao editar usuário:', error);
+  // Verificar se elementos existem
+  const nameInput = document.getElementById('newUserName');
+  const emailInput = document.getElementById('newUserEmail');
+  const setorSelect = document.getElementById('newUserSetor');
+  const typeSelect = document.getElementById('newUserType');
+  const activeCheckbox = document.getElementById('newUserActive');
+  
+  if (!nameInput || !emailInput || !setorSelect || !typeSelect || !activeCheckbox) {
+    console.error('Elementos do formulário não encontrados');
+    return;
   }
+  
+  // Detectar perfil do usuário
+  const userProfile = detectUserProfile(user);
+  
+  // Preencher o formulário com os dados do usuário
+  nameInput.value = user.nome;
+  emailInput.value = user.email;
+  setorSelect.value = user.setor_id || '';
+  typeSelect.value = userProfile;
+  activeCheckbox.checked = user.ativo;
+  
+  // Mostrar botão cancelar
+  const btnCancel = document.getElementById('btnCancelUserEdit');
+  if (btnCancel) {
+    btnCancel.classList.remove('hidden');
+    btnCancel.classList.add('flex');
+  }
+  
+  // Mudar o texto e comportamento do botão
+  const btnAddUser = document.getElementById('btnAddUser');
+  if (!btnAddUser) {
+    console.error('Botão de adicionar não encontrado');
+    return;
+  }
+  
+  btnAddUser.innerHTML = `
+    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+    Atualizar Usuário
+  `;
+  
+  // Remover event listener antigo e adicionar novo para edição
+  const newBtn = btnAddUser.cloneNode(true);
+  btnAddUser.parentNode.replaceChild(newBtn, btnAddUser);
+  
+  newBtn.addEventListener('click', async () => {
+    let nome = document.getElementById('newUserName')?.value.trim();
+    const email = document.getElementById('newUserEmail')?.value.trim();
+    const setorId = document.getElementById('newUserSetor')?.value;
+    const userType = document.getElementById('newUserType')?.value;
+    const ativo = document.getElementById('newUserActive')?.checked;
+    
+    if (!nome || !email || !setorId) {
+      alert('⚠️ Preencha todos os campos obrigatórios!');
+      return;
+    }
+    
+    // Determinar is_admin e ajustar nome conforme perfil
+    let is_admin = false;
+    
+    if (userType === 'admin') {
+      is_admin = true;
+      // Remover sufixos de perfil do nome se existirem
+      nome = nome.replace(/\s*-\s*(Consultoria|Coordenador|Coordenadora|Supervisor|Supervisora)\s*$/gi, '').trim();
+    } else if (userType === 'consultoria') {
+      if (!nome.toLowerCase().includes('consultoria')) {
+        nome = nome.replace(/\s*-\s*(Coordenador|Coordenadora|Supervisor|Supervisora)\s*$/gi, '').trim();
+        nome = `${nome} - Consultoria`;
+      }
+    } else if (userType === 'coordenador') {
+      if (!nome.toLowerCase().includes('coordenador')) {
+        nome = nome.replace(/\s*-\s*(Consultoria|Supervisor|Supervisora)\s*$/gi, '').trim();
+        nome = `${nome} - Coordenador`;
+      }
+    } else if (userType === 'supervisor') {
+      if (!nome.toLowerCase().includes('supervisor')) {
+        nome = nome.replace(/\s*-\s*(Consultoria|Coordenador|Coordenadora)\s*$/gi, '').trim();
+        nome = `${nome} - Supervisor`;
+      }
+    } else {
+      // Usuário comum - remover todos os sufixos
+      nome = nome.replace(/\s*-\s*(Consultoria|Coordenador|Coordenadora|Supervisor|Supervisora)\s*$/gi, '').trim();
+    }
+    
+    try {
+      const { updateUser } = await import('./database.js');
+      await updateUser(userId, {
+        nome,
+        email,
+        setor_id: setorId,
+        is_admin: is_admin,
+        ativo
+      });
+      
+      // Toast de sucesso já é exibido pela função updateUser no database.js
+      
+      // Limpar formulário e restaurar botão
+      resetUserForm();
+      
+      const { loadUsers } = await import('./database.js');
+      allUsersCache = await loadUsers();
+      renderUserList();
+    } catch (error) {
+      console.error('Erro ao atualizar usuário:', error);
+      alert('❌ Erro ao atualizar usuário: ' + error.message);
+    }
+  });
+  
+  // Scroll suave até o formulário
+  nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  nameInput.focus();
 }
 
 async function toggleUserStatusBtn(userId, currentStatus) {
