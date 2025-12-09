@@ -94,10 +94,19 @@ export function showLoginScreen() {
   if (loginScreen) loginScreen.classList.remove('hidden');
   if (appContent) appContent.classList.add('hidden');
   
-  // Resetar formulários
-  if (loginForm) loginForm.style.display = 'block';
-  if (codeForm) codeForm.classList.add('hidden');
-  if (loginLoading) loginLoading.classList.add('hidden');
+  // Resetar formulários - garantir que volta ao estado inicial
+  if (loginForm) {
+    loginForm.style.display = 'block';
+    loginForm.classList.remove('hidden');
+  }
+  if (codeForm) {
+    codeForm.classList.add('hidden');
+    codeForm.style.display = 'none';
+  }
+  if (loginLoading) {
+    loginLoading.classList.add('hidden');
+    loginLoading.style.display = 'none';
+  }
   
   // Limpar campos
   const emailInput = document.getElementById('emailInput');
@@ -105,7 +114,10 @@ export function showLoginScreen() {
   if (emailInput) emailInput.value = '';
   if (codeInput) codeInput.value = '';
   
-  console.log('📺 Tela de login exibida');
+  // Limpar variável temporária do email
+  tempEmail = '';
+  
+  console.log('📺 Tela de login exibida e resetada');
 }
 
 export function showApp() {
@@ -257,18 +269,36 @@ export async function sendVerificationCode(email) {
     } else {
       console.log('✅ Código enviado com sucesso');
       tempEmail = email;
+      const loginFormEl = document.getElementById('loginForm');
       const sentToEmailEl = document.getElementById('sentToEmail');
       const codeFormEl = document.getElementById('codeForm');
       const codeInputEl = document.getElementById('codeInput');
       
+      console.log('🔍 Debug - loginFormEl:', loginFormEl);
+      console.log('🔍 Debug - codeFormEl:', codeFormEl);
+      console.log('🔍 Debug - codeFormEl classes antes:', codeFormEl?.classList.toString());
+      
       if (sentToEmailEl) sentToEmailEl.textContent = email;
       
+      // Esconder loading e formulário de email
       loginLoading.classList.add('hidden');
+      if (loginFormEl) {
+        loginFormEl.style.display = 'none';
+        loginFormEl.classList.add('hidden');
+      }
       
-      if (codeFormEl) codeFormEl.classList.remove('hidden');
-      if (codeInputEl) codeInputEl.focus();
+      // Mostrar formulário de código
+      if (codeFormEl) {
+        codeFormEl.classList.remove('hidden');
+        codeFormEl.style.display = 'block';
+        console.log('🔍 Debug - codeFormEl classes depois:', codeFormEl.classList.toString());
+      }
       
-      alert('📧 Código de verificação enviado para ' + email + '!\n\nVerifique sua caixa de entrada e digite o código de 6 dígitos no campo abaixo.');
+      if (codeInputEl) {
+        setTimeout(() => codeInputEl.focus(), 100);
+      }
+      
+      showToast('Código enviado para seu email!', 'success');
     }
   } catch (error) {
     console.error('Erro ao enviar código:', error);
