@@ -95,11 +95,35 @@ export function renderTaskList() {
       </td>
       <td class="px-4 py-3">${(task.attachments || []).length > 0 ? `📎 ${task.attachments.length}` : '—'}</td>
       <td class="px-4 py-3">
-        <button onclick="window.viewTaskDetails('${task.id}')" class="text-blue-600 hover:text-blue-800 mr-2" title="Ver detalhes">👁️</button>
-        ${canEditTask(task) ? `<button onclick="window.editTask('${task.id}')" class="text-green-600 hover:text-green-800 mr-2" title="Editar">✏️</button>` : ''}
-        ${canDeleteTask(task) ? `<button onclick="window.deleteTaskById('${task.id}')" class="text-red-600 hover:text-red-800" title="Excluir">🗑️</button>` : ''}
-        ${hasPermission('tarefas.solicitar_conclusao') && task.status !== 'Concluído' && task.confirmation_status !== 'pending' ? `<button onclick="window.requestTaskCompletion('${task.id}')" class="text-green-600 hover:text-green-800 mr-2" title="Solicitar Conclusão">✓</button>` : ''}
-        ${task.confirmation_status === 'pending' ? `<span class="text-xs text-yellow-600" title="Aguardando aprovação">⏳ Pendente</span>` : ''}
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center gap-2">
+            <button onclick="window.viewTaskDetails('${task.id}')" class="text-blue-600 hover:text-blue-800" title="Ver detalhes">👁️</button>
+            ${canEditTask(task) ? `<button onclick="window.editTask('${task.id}')" class="text-green-600 hover:text-green-800" title="Editar">✏️</button>` : ''}
+            ${canDeleteTask(task) ? `<button onclick="window.deleteTaskById('${task.id}')" class="text-red-600 hover:text-red-800" title="Excluir">🗑️</button>` : ''}
+            ${hasPermission('tarefas.solicitar_conclusao') && task.status !== 'Concluído' && task.confirmation_status !== 'pending' ? `<button onclick="window.requestTaskCompletion('${task.id}')" class="text-green-600 hover:text-green-800" title="Solicitar Conclusão">✓</button>` : ''}
+          </div>
+          ${task.confirmation_status === 'pending' ? `
+            <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full cursor-pointer hover:bg-yellow-200 transition" 
+                  onclick="window.viewTaskDetails('${task.id}')" 
+                  title="Clique para ver detalhes da solicitação">
+              ⏳ Pendente desde ${formatDate(task.confirmation_requested_at)}
+            </span>
+          ` : ''}
+          ${task.confirmation_status === 'approved' ? `
+            <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full cursor-pointer hover:bg-green-200 transition" 
+                  onclick="window.viewTaskDetails('${task.id}')" 
+                  title="Clique para ver detalhes da aprovação">
+              ✅ Aprovado em ${formatDate(task.confirmation_approved_at)}
+            </span>
+          ` : ''}
+          ${task.confirmation_status === 'rejected' ? `
+            <span class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full cursor-pointer hover:bg-red-200 transition" 
+                  onclick="window.viewTaskDetails('${task.id}')" 
+                  title="Clique para ver motivo da rejeição">
+              ❌ Rejeitado - Ver motivo
+            </span>
+          ` : ''}
+        </div>
       </td>
     </tr>
   `).join('');
@@ -138,7 +162,25 @@ export function renderKanban() {
                 </button>
               ` : ''}
               ${task.confirmation_status === 'pending' ? `
-                <div class="mt-2 text-xs text-yellow-600 text-center">⏳ Aguardando aprovação</div>
+                <div onclick="event.stopPropagation(); window.viewTaskDetails('${task.id}')" 
+                     class="mt-2 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs text-center cursor-pointer hover:bg-yellow-200 transition"
+                     title="Clique para ver detalhes da solicitação">
+                  ⏳ Pendente desde ${formatDate(task.confirmation_requested_at)}
+                </div>
+              ` : ''}
+              ${task.confirmation_status === 'approved' ? `
+                <div onclick="event.stopPropagation(); window.viewTaskDetails('${task.id}')" 
+                     class="mt-2 px-2 py-1 bg-green-100 text-green-700 rounded text-xs text-center cursor-pointer hover:bg-green-200 transition"
+                     title="Clique para ver detalhes da aprovação">
+                  ✅ Aprovado em ${formatDate(task.confirmation_approved_at)}
+                </div>
+              ` : ''}
+              ${task.confirmation_status === 'rejected' ? `
+                <div onclick="event.stopPropagation(); window.viewTaskDetails('${task.id}')" 
+                     class="mt-2 px-2 py-1 bg-red-100 text-red-700 rounded text-xs text-center cursor-pointer hover:bg-red-200 transition"
+                     title="Clique para ver motivo da rejeição">
+                  ❌ Rejeitado - Ver motivo
+                </div>
               ` : ''}
             </div>
           `).join('')}
@@ -498,6 +540,98 @@ export function openDetail(task) {
         }).join('') || '<span class="text-slate-400">Nenhum anexo</span>'}
       </div>
     </div>`;
+  
+  // ====== ADICIONAR HISTÓRICO DE CONCLUSÃO ======
+  const historySection = document.getElementById('detailCompletionHistory');
+  const historyPending = document.getElementById('detailHistoryPending');
+  const historyApproved = document.getElementById('detailHistoryApproved');
+  const historyRejected = document.getElementById('detailHistoryRejected');
+  
+  // Resetar visibilidade
+  if (historySection) historySection.classList.add('hidden');
+  if (historyPending) historyPending.classList.add('hidden');
+  if (historyApproved) historyApproved.classList.add('hidden');
+  if (historyRejected) historyRejected.classList.add('hidden');
+  
+  // Verificar se há histórico de conclusão
+  if (task.confirmation_status && historySection) {
+    historySection.classList.remove('hidden');
+    
+    // Função auxiliar para formatar data e hora
+    const formatDateTime = (dateStr) => {
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
+      return date.toLocaleString('pt-BR', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+    
+    if (task.confirmation_status === 'pending' && historyPending) {
+      // Solicitação Pendente
+      historyPending.classList.remove('hidden');
+      
+      const requestedBy = document.getElementById('detailHistoryRequestedBy');
+      const requestedAt = document.getElementById('detailHistoryRequestedAt');
+      const userNotes = document.getElementById('detailHistoryUserNotes');
+      
+      if (requestedBy) requestedBy.textContent = task.confirmation_requested_by || '-';
+      if (requestedAt) requestedAt.textContent = formatDateTime(task.confirmation_requested_at);
+      if (userNotes) {
+        userNotes.textContent = task.confirmation_notes || 'Nenhuma observação fornecida.';
+      }
+      
+    } else if (task.confirmation_status === 'approved' && historyApproved) {
+      // Solicitação Aprovada
+      historyApproved.classList.remove('hidden');
+      
+      const requestedBy = document.getElementById('detailHistoryApprovedRequestedBy');
+      const requestedAt = document.getElementById('detailHistoryApprovedRequestedAt');
+      const userNotes = document.getElementById('detailHistoryApprovedUserNotes');
+      const approvedBy = document.getElementById('detailHistoryApprovedBy');
+      const approvedAt = document.getElementById('detailHistoryApprovedAt');
+      const adminNotesContainer = document.getElementById('detailHistoryAdminNotesApproved');
+      const adminNotesText = document.getElementById('detailHistoryAdminNotesApprovedText');
+      
+      if (requestedBy) requestedBy.textContent = task.confirmation_requested_by || '-';
+      if (requestedAt) requestedAt.textContent = formatDateTime(task.confirmation_requested_at);
+      if (userNotes) {
+        userNotes.textContent = task.confirmation_notes || 'Nenhuma observação fornecida.';
+      }
+      if (approvedBy) approvedBy.textContent = task.confirmation_approved_by || '-';
+      if (approvedAt) approvedAt.textContent = formatDateTime(task.confirmation_approved_at);
+      
+      if (task.admin_notes && adminNotesContainer && adminNotesText) {
+        adminNotesContainer.classList.remove('hidden');
+        adminNotesText.textContent = task.admin_notes;
+      }
+      
+    } else if (task.confirmation_status === 'rejected' && historyRejected) {
+      // Solicitação Rejeitada
+      historyRejected.classList.remove('hidden');
+      
+      const requestedBy = document.getElementById('detailHistoryRejectedRequestedBy');
+      const requestedAt = document.getElementById('detailHistoryRejectedRequestedAt');
+      const userNotes = document.getElementById('detailHistoryRejectedUserNotes');
+      const rejectedBy = document.getElementById('detailHistoryRejectedBy');
+      const rejectedAt = document.getElementById('detailHistoryRejectedAt');
+      const adminNotes = document.getElementById('detailHistoryAdminNotesRejected');
+      
+      if (requestedBy) requestedBy.textContent = task.confirmation_requested_by || '-';
+      if (requestedAt) requestedAt.textContent = formatDateTime(task.confirmation_requested_at);
+      if (userNotes) {
+        userNotes.textContent = task.confirmation_notes || 'Nenhuma observação fornecida.';
+      }
+      if (rejectedBy) rejectedBy.textContent = task.confirmation_approved_by || '-';
+      if (rejectedAt) rejectedAt.textContent = formatDateTime(task.confirmation_approved_at);
+      if (adminNotes) {
+        adminNotes.textContent = task.admin_notes || 'Nenhum motivo fornecido.';
+      }
+    }
+  }
   
   detailModal.showModal();
   
