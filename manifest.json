@@ -63,20 +63,6 @@
       "type": "image/png"
     }
   ],
-  "screenshots": [
-    {
-      "src": "./assets/images/screenshot-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    },
-    {
-      "src": "./assets/images/screenshot-mobile.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Nova Tarefa",
