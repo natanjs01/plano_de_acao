@@ -3,9 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Controle de Atividades — Dashboard & Anexos</title>
+  <title>Plano de Ação - Grupo Líder</title>
   
-  <!-- Favicon (evita erro 404) -->
+  <!-- PWA - Progressive Web App -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#E31E24">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Plano Ação">
+  <meta name="description" content="Sistema de Controle de Atividades e Gestão de Tarefas - Grupo Líder">
+  
+  <!-- Ícones PWA -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/icons/32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/icons/16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/icons/180.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/assets/images/icons/152.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="/assets/images/icons/144.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/assets/images/icons/120.png">
+  
+  <!-- Favicon fallback (evita erro 404) -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
   
   <!-- CDNs Externos -->
@@ -894,5 +911,50 @@
 
   <!-- Módulos JavaScript -->
   <script type="module" src="./assets/js/main.js"></script>
+  
+  <!-- PWA Service Worker -->
+  <script>
+    // Registrar Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => {
+            console.log('✅ PWA: Service Worker registrado com sucesso');
+            console.log('📱 Escopo:', registration.scope);
+            
+            // Verificar atualizações
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              console.log('🔄 PWA: Nova versão encontrada');
+              
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('✨ PWA: Nova versão disponível! Recarregue a página.');
+                }
+              });
+            });
+          })
+          .catch(error => {
+            console.log('❌ PWA: Erro ao registrar Service Worker:', error);
+          });
+      });
+      
+      // Detectar quando o app é instalado
+      window.addEventListener('appinstalled', () => {
+        console.log('🎉 PWA instalado com sucesso!');
+      });
+      
+      // Botão de instalação (beforeinstallprompt)
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        console.log('📲 PWA: Prompt de instalação disponível');
+        
+        // Aqui você pode mostrar um botão customizado de instalação
+        // Exemplo: document.getElementById('btnInstallPWA').style.display = 'block';
+      });
+    }
+  </script>
 </body>
 </html>
