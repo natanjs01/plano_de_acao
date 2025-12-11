@@ -141,9 +141,9 @@ export function renderKanban() {
     const tasks = filteredTasks.filter(t => t.status === status);
     
     return `
-      <div class="bg-slate-100 rounded-2xl p-4">
+      <div class="bg-slate-100 rounded-2xl p-4 flex flex-col">
         <h3 class="font-semibold mb-3">${status} <span class="text-sm text-slate-600">(${tasks.length})</span></h3>
-        <div class="space-y-3">
+        <div class="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-400 scrollbar-track-slate-200 hover:scrollbar-thumb-slate-500">
           ${tasks.map(task => `
             <div class="bg-white rounded-xl p-3 shadow-sm hover:shadow-md transition">
               <div onclick="window.viewTaskDetails('${task.id}')" class="cursor-pointer">
